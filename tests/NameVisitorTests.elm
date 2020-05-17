@@ -31,15 +31,18 @@ module Page exposing (view)
 view : Node (Html.Attribute msg) -> Html msg
 view (Node attribute) = Html.div [ attribute ] []
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (valueOrTypeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Node"
+                        [ expectedTypeError context "Node"
                             |> Review.Test.atExactly { start = { row = 3, column = 8 }, end = { row = 3, column = 12 } }
-                        , expectedError context "Html.Attribute"
-                        , expectedError context "Html"
+                        , expectedTypeError context "Html.Attribute"
+                        , expectedTypeError context "Html"
                             |> Review.Test.atExactly { start = { row = 3, column = 37 }, end = { row = 3, column = 41 } }
-                        , expectedError context "Node"
+                        , expectedValueError context "Node"
                             |> Review.Test.atExactly { start = { row = 4, column = 7 }, end = { row = 4, column = 11 } }
+                        , expectedValueError context "Html.div"
+                        , expectedValueError context "attribute"
+                            |> Review.Test.atExactly { start = { row = 4, column = 36 }, end = { row = 4, column = 45 } }
                         ]
         , fuzz Fuzz.string "AliasDeclaration" <|
             \context ->
@@ -50,11 +53,11 @@ type alias Page =
     , body : List (Html msg)
     }
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (valueOrTypeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "String"
-                        , expectedError context "List"
-                        , expectedError context "Html"
+                        [ expectedTypeError context "String"
+                        , expectedTypeError context "List"
+                        , expectedTypeError context "Html"
                         ]
         , fuzz Fuzz.string "CustomTypeDeclaration" <|
             \context ->
@@ -63,9 +66,9 @@ module Page exposing (Page)
 type Page
     = Home Route.Home
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (valueOrTypeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Route.Home"
+                        [ expectedTypeError context "Route.Home"
                         ]
         , fuzz Fuzz.string "PortDeclaration" <|
             \context ->
@@ -73,10 +76,10 @@ type Page
 port module Ports exposing (alarm)
 port alarm : Json.Encode.Value -> Cmd msg
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (valueOrTypeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Json.Encode.Value"
-                        , expectedError context "Cmd"
+                        [ expectedTypeError context "Json.Encode.Value"
+                        , expectedTypeError context "Cmd"
                         ]
         ]
 
@@ -90,9 +93,9 @@ expressionTests =
 module Page exposing (view)
 view = Html.div [] []
 """
-                    |> Review.Test.run (expressionVisitorRule context)
+                    |> Review.Test.run (valueOrTypeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Html.div"
+                        [ expectedValueError context "Html.div"
                         ]
         , fuzz Fuzz.string "LetDestructuring" <|
             \context ->
@@ -104,10 +107,10 @@ view =
     in
     html
 """
-                    |> Review.Test.run (expressionVisitorRule context)
+                    |> Review.Test.run (valueOrTypeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Html.span"
-                        , expectedError context "html"
+                        [ expectedValueError context "Html.span"
+                        , expectedValueError context "html"
                             |> Review.Test.atExactly { start = { row = 7, column = 5 }, end = { row = 7, column = 9 } }
                         ]
         , fuzz Fuzz.string "LetFunction" <|
@@ -121,12 +124,12 @@ view =
     in
     html
 """
-                    |> Review.Test.run (expressionVisitorRule context)
+                    |> Review.Test.run (valueOrTypeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Nested.Html"
-                        , expectedError context "Nested.Node"
-                        , expectedError context "span"
-                        , expectedError context "html"
+                        [ expectedTypeError context "Nested.Html"
+                        , expectedValueError context "Nested.Node"
+                        , expectedValueError context "span"
+                        , expectedValueError context "html"
                             |> Review.Test.atExactly { start = { row = 8, column = 5 }, end = { row = 8, column = 9 } }
                         ]
         , fuzz Fuzz.string "CaseExpression" <|
@@ -138,12 +141,12 @@ visitor node =
         Expression.FunctionOrValue _ _ ->
             []
 """
-                    |> Review.Test.run (expressionVisitorRule context)
+                    |> Review.Test.run (valueOrTypeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Node.value"
-                        , expectedError context "node"
+                        [ expectedValueError context "Node.value"
+                        , expectedValueError context "node"
                             |> Review.Test.atExactly { start = { row = 4, column = 21 }, end = { row = 4, column = 25 } }
-                        , expectedError context "Expression.FunctionOrValue"
+                        , expectedValueError context "Expression.FunctionOrValue"
                         ]
         , fuzz Fuzz.string "LambdaExpression" <|
             \context ->
@@ -152,13 +155,13 @@ module Page exposing (view)
 view nodes =
     Html.div [] (List.map (\\(Node name) -> Html.text name))
 """
-                    |> Review.Test.run (expressionVisitorRule context)
+                    |> Review.Test.run (valueOrTypeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Html.div"
-                        , expectedError context "List.map"
-                        , expectedError context "Node"
-                        , expectedError context "Html.text"
-                        , expectedError context "name"
+                        [ expectedValueError context "Html.div"
+                        , expectedValueError context "List.map"
+                        , expectedValueError context "Node"
+                        , expectedValueError context "Html.text"
+                        , expectedValueError context "name"
                             |> Review.Test.atExactly { start = { row = 4, column = 54 }, end = { row = 4, column = 58 } }
                         ]
         ]
@@ -172,12 +175,18 @@ patternTests =
                 """
 module Page exposing (view)
 view ( Nested.Node name, Nested.Value value ) =
-    Html.div [] [ Html.text name, Html.text value ]
+    Html.div [] [ Html.text (name ++ value) ]
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (valueVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Nested.Node"
-                        , expectedError context "Nested.Value"
+                        [ expectedValueError context "Nested.Node"
+                        , expectedValueError context "Nested.Value"
+                        , expectedValueError context "Html.div"
+                        , expectedValueError context "Html.text"
+                        , expectedValueError context "name"
+                            |> Review.Test.atExactly { start = { row = 4, column = 30 }, end = { row = 4, column = 34 } }
+                        , expectedValueError context "value"
+                            |> Review.Test.atExactly { start = { row = 4, column = 38 }, end = { row = 4, column = 43 } }
                         ]
         , fuzz Fuzz.string "UnConsPattern" <|
             \context ->
@@ -188,13 +197,13 @@ list children =
         (Page.First first) :: (Page.Second second) :: _ ->
             Html.text ""
 """
-                    |> Review.Test.run (expressionVisitorRule context)
+                    |> Review.Test.run (valueVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "children"
+                        [ expectedValueError context "children"
                             |> Review.Test.atExactly { start = { row = 4, column = 10 }, end = { row = 4, column = 18 } }
-                        , expectedError context "Page.First"
-                        , expectedError context "Page.Second"
-                        , expectedError context "Html.text"
+                        , expectedValueError context "Page.First"
+                        , expectedValueError context "Page.Second"
+                        , expectedValueError context "Html.text"
                         ]
         , fuzz Fuzz.string "ListPattern" <|
             \context ->
@@ -205,13 +214,13 @@ list children =
         [ Page.First first, Page.Second second ] ->
             Html.text ""
 """
-                    |> Review.Test.run (expressionVisitorRule context)
+                    |> Review.Test.run (valueVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "children"
+                        [ expectedValueError context "children"
                             |> Review.Test.atExactly { start = { row = 4, column = 10 }, end = { row = 4, column = 18 } }
-                        , expectedError context "Page.First"
-                        , expectedError context "Page.Second"
-                        , expectedError context "Html.text"
+                        , expectedValueError context "Page.First"
+                        , expectedValueError context "Page.Second"
+                        , expectedValueError context "Html.text"
                         ]
         , fuzz Fuzz.string "NamedPattern" <|
             \context ->
@@ -219,22 +228,25 @@ list children =
 module Page exposing (view)
 view (Node name) = Html.text name
 """
-                    |> Review.Test.run (expressionVisitorRule context)
+                    |> Review.Test.run (valueVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Html.text"
-                        , expectedError context "name"
+                        [ expectedValueError context "Node"
+                        , expectedValueError context "Html.text"
+                        , expectedValueError context "name"
                             |> Review.Test.atExactly { start = { row = 3, column = 30 }, end = { row = 3, column = 34 } }
                         ]
         , fuzz Fuzz.string "AsPattern" <|
             \context ->
                 """
 module Page exposing (view)
-view ((Page.Document title body) as doc)
-    = Html.text title
+view ((Page.Document title _) as doc) = Html.text title
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (valueVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Page.Document"
+                        [ expectedValueError context "Page.Document"
+                        , expectedValueError context "Html.text"
+                        , expectedValueError context "title"
+                            |> Review.Test.atExactly { start = { row = 3, column = 51 }, end = { row = 3, column = 56 } }
                         ]
         , fuzz Fuzz.string "ParenthesizedPattern" <|
             \context ->
@@ -242,9 +254,12 @@ view ((Page.Document title body) as doc)
 module Page exposing (view)
 view (Nested.Node name) = Html.text name
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (valueVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Nested.Node"
+                        [ expectedValueError context "Nested.Node"
+                        , expectedValueError context "Html.text"
+                        , expectedValueError context "name"
+                            |> Review.Test.atExactly { start = { row = 3, column = 37 }, end = { row = 3, column = 41 } }
                         ]
         ]
 
@@ -259,11 +274,11 @@ module Page exposing (view)
 view : Nested.Node Page.Document msg -> Html msg
 view node = div [] []
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (typeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Nested.Node"
-                        , expectedError context "Page.Document"
-                        , expectedError context "Html"
+                        [ expectedTypeError context "Nested.Node"
+                        , expectedTypeError context "Page.Document"
+                        , expectedTypeError context "Html"
                         ]
         , fuzz Fuzz.string "Tupled" <|
             \context ->
@@ -272,11 +287,11 @@ module Page exposing (Page)
 type Page
     = Page ( Document.Title, Document.List Document.Item )
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (typeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Document.Title"
-                        , expectedError context "Document.List"
-                        , expectedError context "Document.Item"
+                        [ expectedTypeError context "Document.Title"
+                        , expectedTypeError context "Document.List"
+                        , expectedTypeError context "Document.Item"
                         ]
         , fuzz Fuzz.string "Record" <|
             \context ->
@@ -285,11 +300,11 @@ module Page exposing (Page)
 type Page
     = Page { title : Document.Title, body : Document.List Document.Item }
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (typeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Document.Title"
-                        , expectedError context "Document.List"
-                        , expectedError context "Document.Item"
+                        [ expectedTypeError context "Document.Title"
+                        , expectedTypeError context "Document.List"
+                        , expectedTypeError context "Document.Item"
                         ]
         , fuzz Fuzz.string "GenericRecord" <|
             \context ->
@@ -298,11 +313,11 @@ module Page exposing (Page)
 type Page
     = Page { page | title : Document.Title, body : Document.List Document.Item }
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (typeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Document.Title"
-                        , expectedError context "Document.List"
-                        , expectedError context "Document.Item"
+                        [ expectedTypeError context "Document.Title"
+                        , expectedTypeError context "Document.List"
+                        , expectedTypeError context "Document.Item"
                         ]
         , fuzz Fuzz.string "FunctionTypeAnnotation" <|
             \context ->
@@ -311,12 +326,12 @@ module Page exposing (Viewer)
 type Viewer msg
     = Viewer (Document.Title -> Document.List Document.Item -> Html msg)
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (typeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Document.Title"
-                        , expectedError context "Document.List"
-                        , expectedError context "Document.Item"
-                        , expectedError context "Html"
+                        [ expectedTypeError context "Document.Title"
+                        , expectedTypeError context "Document.List"
+                        , expectedTypeError context "Document.Item"
+                        , expectedTypeError context "Html"
                         ]
         ]
 
@@ -334,16 +349,16 @@ view page =
 """
                     |> Review.Test.run (nameVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Page"
+                        [ expectedNameError context "Page"
                             |> Review.Test.atExactly { start = { row = 3, column = 8 }, end = { row = 3, column = 12 } }
-                        , expectedError context "Html"
+                        , expectedNameError context "Html"
                             |> Review.Test.atExactly { start = { row = 3, column = 16 }, end = { row = 3, column = 20 } }
-                        , expectedError context "Html.div"
-                        , expectedError context "Page.body"
-                        , expectedError context "page"
+                        , expectedNameError context "Html.div"
+                        , expectedNameError context "Page.body"
+                        , expectedNameError context "page"
                             |> Review.Test.atExactly { start = { row = 5, column = 28 }, end = { row = 5, column = 32 } }
                         ]
-        , fuzz Fuzz.string "withDeclarationListVisitor" <|
+        , fuzz Fuzz.string "withValueVisitor" <|
             \context ->
                 """
 module Page exposing (view)
@@ -351,14 +366,29 @@ view : Page -> Html msg
 view page =
     Html.div [] (Page.body page)
 """
-                    |> Review.Test.run (declarationListVisitorRule context)
+                    |> Review.Test.run (valueVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Page"
+                        [ expectedValueError context "Html.div"
+                        , expectedValueError context "Page.body"
+                        , expectedValueError context "page"
+                            |> Review.Test.atExactly { start = { row = 5, column = 28 }, end = { row = 5, column = 32 } }
+                        ]
+        , fuzz Fuzz.string "withTypeVisitor" <|
+            \context ->
+                """
+module Page exposing (view)
+view : Page -> Html msg
+view page =
+    Html.div [] (Page.body page)
+"""
+                    |> Review.Test.run (typeVisitorRule context)
+                    |> Review.Test.expectErrors
+                        [ expectedTypeError context "Page"
                             |> Review.Test.atExactly { start = { row = 3, column = 8 }, end = { row = 3, column = 12 } }
-                        , expectedError context "Html"
+                        , expectedTypeError context "Html"
                             |> Review.Test.atExactly { start = { row = 3, column = 16 }, end = { row = 3, column = 20 } }
                         ]
-        , fuzz Fuzz.string "withExpressionVisitor" <|
+        , fuzz Fuzz.string "withValueOrTypeVisitor" <|
             \context ->
                 """
 module Page exposing (view)
@@ -366,11 +396,15 @@ view : Page -> Html msg
 view page =
     Html.div [] (Page.body page)
 """
-                    |> Review.Test.run (expressionVisitorRule context)
+                    |> Review.Test.run (valueOrTypeVisitorRule context)
                     |> Review.Test.expectErrors
-                        [ expectedError context "Html.div"
-                        , expectedError context "Page.body"
-                        , expectedError context "page"
+                        [ expectedTypeError context "Page"
+                            |> Review.Test.atExactly { start = { row = 3, column = 8 }, end = { row = 3, column = 12 } }
+                        , expectedTypeError context "Html"
+                            |> Review.Test.atExactly { start = { row = 3, column = 16 }, end = { row = 3, column = 20 } }
+                        , expectedValueError context "Html.div"
+                        , expectedValueError context "Page.body"
+                        , expectedValueError context "page"
                             |> Review.Test.atExactly { start = { row = 5, column = 28 }, end = { row = 5, column = 32 } }
                         ]
         ]
@@ -389,13 +423,13 @@ view page =
 """
                     |> Review.Test.run (countingVisitorRule 0)
                     |> Review.Test.expectErrors
-                        [ expectedError "0" "Page"
+                        [ expectedNameError "0" "Page"
                             |> Review.Test.atExactly { start = { row = 3, column = 8 }, end = { row = 3, column = 12 } }
-                        , expectedError "1" "Html"
+                        , expectedNameError "1" "Html"
                             |> Review.Test.atExactly { start = { row = 3, column = 16 }, end = { row = 3, column = 20 } }
-                        , expectedError "2" "Html.div"
-                        , expectedError "3" "Page.body"
-                        , expectedError "4" "page"
+                        , expectedNameError "2" "Html.div"
+                        , expectedNameError "3" "Page.body"
+                        , expectedNameError "4" "page"
                             |> Review.Test.atExactly { start = { row = 5, column = 28 }, end = { row = 5, column = 32 } }
                         ]
         ]
@@ -405,10 +439,28 @@ view page =
 -- TEST HELPERS
 
 
-expectedError : String -> String -> Review.Test.ExpectedError
-expectedError context name =
+expectedNameError : String -> String -> Review.Test.ExpectedError
+expectedNameError context name =
     Review.Test.error
-        { message = "Test Error for `" ++ name ++ "`."
+        { message = "Error for name `" ++ name ++ "`."
+        , details = [ "The context of this error was:", context ]
+        , under = name
+        }
+
+
+expectedValueError : String -> String -> Review.Test.ExpectedError
+expectedValueError context name =
+    Review.Test.error
+        { message = "Error for value `" ++ name ++ "`."
+        , details = [ "The context of this error was:", context ]
+        , under = name
+        }
+
+
+expectedTypeError : String -> String -> Review.Test.ExpectedError
+expectedTypeError context name =
+    Review.Test.error
+        { message = "Error for type `" ++ name ++ "`."
         , details = [ "The context of this error was:", context ]
         , under = name
         }
@@ -425,23 +477,43 @@ nameVisitorRule context =
         |> Rule.fromModuleRuleSchema
 
 
-declarationListVisitorRule : String -> Rule
-declarationListVisitorRule context =
-    Rule.newModuleRuleSchema "DeclarationListVisitor" context
-        |> Rule.withDeclarationListVisitor (NameVisitor.declarationListVisitor nameVisitor)
+valueOrTypeVisitorRule : String -> Rule
+valueOrTypeVisitorRule context =
+    Rule.newModuleRuleSchema "ValueOrTypeVisitor" context
+        |> NameVisitor.withValueAndTypeVisitors
+            { valueVisitor = valueVisitor
+            , typeVisitor = typeVisitor
+            }
         |> Rule.fromModuleRuleSchema
 
 
-expressionVisitorRule : String -> Rule
-expressionVisitorRule context =
-    Rule.newModuleRuleSchema "ExpressionVisitor" context
-        |> Rule.withExpressionVisitor (NameVisitor.expressionVisitor nameVisitor)
+valueVisitorRule : String -> Rule
+valueVisitorRule context =
+    Rule.newModuleRuleSchema "ValueVisitor" context
+        |> NameVisitor.withValueVisitor valueVisitor
+        |> Rule.fromModuleRuleSchema
+
+
+typeVisitorRule : String -> Rule
+typeVisitorRule context =
+    Rule.newModuleRuleSchema "TypeVisitor" context
+        |> NameVisitor.withTypeVisitor typeVisitor
         |> Rule.fromModuleRuleSchema
 
 
 nameVisitor : Node ( ModuleName, String ) -> String -> ( List (Error {}), String )
 nameVisitor node context =
-    ( [ simpleError context node ], context )
+    ( [ nameError context node ], context )
+
+
+valueVisitor : Node ( ModuleName, String ) -> String -> ( List (Error {}), String )
+valueVisitor node context =
+    ( [ valueError context node ], context )
+
+
+typeVisitor : Node ( ModuleName, String ) -> String -> ( List (Error {}), String )
+typeVisitor node context =
+    ( [ typeError context node ], context )
 
 
 countingVisitorRule : Int -> Rule
@@ -453,13 +525,31 @@ countingVisitorRule counter =
 
 countingVisitor : Node ( ModuleName, String ) -> Int -> ( List (Error {}), Int )
 countingVisitor node counter =
-    ( [ simpleError (String.fromInt counter) node ], counter + 1 )
+    ( [ nameError (String.fromInt counter) node ], counter + 1 )
 
 
-simpleError : String -> Node ( ModuleName, String ) -> Error {}
-simpleError context node =
+nameError : String -> Node ( ModuleName, String ) -> Error {}
+nameError context node =
     Rule.error
-        { message = "Test Error for `" ++ formatNode node ++ "`."
+        { message = "Error for name `" ++ formatNode node ++ "`."
+        , details = [ "The context of this error was:", context ]
+        }
+        (Node.range node)
+
+
+valueError : String -> Node ( ModuleName, String ) -> Error {}
+valueError context node =
+    Rule.error
+        { message = "Error for value `" ++ formatNode node ++ "`."
+        , details = [ "The context of this error was:", context ]
+        }
+        (Node.range node)
+
+
+typeError : String -> Node ( ModuleName, String ) -> Error {}
+typeError context node =
+    Rule.error
+        { message = "Error for type `" ++ formatNode node ++ "`."
         , details = [ "The context of this error was:", context ]
         }
         (Node.range node)

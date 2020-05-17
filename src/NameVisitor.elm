@@ -1,34 +1,24 @@
-module NameVisitor exposing
-    ( withNameVisitor
-    , declarationListVisitor, expressionVisitor
-    )
+module NameVisitor exposing (withNameVisitor, withValueVisitor, withTypeVisitor, withValueAndTypeVisitors)
 
-{-| Visit each call in the module.
+{-| Visit each name in the module.
 
-A "call" is a `Node ( ModuleName, String )` and represents any value or type reference. Here are some examples:
+A "name" is a `Node ( ModuleName, String )` and represents a value or type reference. Here are some examples:
 
   - `Json.Encode.Value` -> `( [ "Json", "Encode" ], "Value" )`
   - `Html.Attributes.class` -> `( [ "Html", "Attributes" ], "class" )`
   - `Page` -> `( [], "Page" )`
   - `view` -> `( [], "view" )`
 
-These can appear in many places throughout declarations and expressions, and picking them out each time is a lot of work.
-Instead of writing 250 lines each time, you can write one `nameVisitor` and plug it straight into your module schema:
+These can appear in many places throughout declarations and expressions, and picking them out each time is a lot of work. Instead of writing 1000 lines of code and tests each time, you can write one `nameVisitor` and plug it straight into your module schema, or separate `valueVisitor` and `typeVisitor`s.
 
-    rule : Rule
-    rule =
-        Rule.newModuleRuleSchema "NoInconsistentAliases" initialContext
-            |> NameVisitor.withNameVisitor nameVisitor
-            |> Rule.fromModuleRuleSchema
+@docs withNameVisitor, withValueVisitor, withTypeVisitor, withValueAndTypeVisitors
 
-    callListVisitor : Node ( ModuleName, String ) -> context -> ( List (Error {}), context )
-    callListVisitor node context =
-        -- Do what you want with the node found
-        ( [], context )
 
-@docs withNameVisitor
+## Scope
 
-@docs declarationListVisitor, expressionVisitor
+This makes no attempt to resolve module names from imports, it just returns what's written in the code. It would be trivial to connect [elm-review-scope] with the name visitor if you want to do this.
+
+[elm-review-scope]: http://github.com/jfmengels/elm-review-scope/
 
 -}
 
@@ -37,53 +27,164 @@ import Elm.Syntax.Expression as Expression exposing (Expression)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node(..))
 import Elm.Syntax.Pattern as Pattern exposing (Pattern)
-import Elm.Syntax.Range exposing (Range)
 import Elm.Syntax.Signature exposing (Signature)
 import Elm.Syntax.Type as Type
 import Elm.Syntax.TypeAnnotation as TypeAnnotation exposing (TypeAnnotation)
 import Review.Rule as Rule exposing (Error)
 
 
-{-| Adds a `declarationListVisitor` and an `expressionVisitor`.
+type Visitor context
+    = NameVisitor (VisitorFunction context)
+    | ValueVisitor (VisitorFunction context)
+    | TypeVisitor (VisitorFunction context)
+    | ValueAndTypeVisitor (VisitorFunction context) (VisitorFunction context)
+
+
+type alias VisitorFunction context =
+    Node ( ModuleName, String ) -> context -> ( List (Error {}), context )
+
+
+type Name
+    = Value (Node ( ModuleName, String ))
+    | Type (Node ( ModuleName, String ))
+
+
+{-| This will apply the `nameVisitor` to every value and type in the module, you will get no information about whether the name is a value or type.
+
+    rule : Rule
+    rule =
+        Rule.newModuleRuleSchema "NoInconsistentAliases" initialContext
+            |> NameVisitor.withNameVisitor nameVisitor
+            |> Rule.fromModuleRuleSchema
+
+    nameVisitor : Node ( ModuleName, String ) -> context -> ( List (Error {}), context )
+    nameVisitor node context =
+        -- Do what you want with the name
+        ( [], context )
+
 -}
 withNameVisitor :
     (Node ( ModuleName, String ) -> context -> ( List (Error {}), context ))
     -> Rule.ModuleRuleSchema { schemaState | canCollectProjectData : () } context
     -> Rule.ModuleRuleSchema { schemaState | canCollectProjectData : (), hasAtLeastOneVisitor : () } context
-withNameVisitor visitor rule =
+withNameVisitor nameVisitor rule =
+    let
+        visitor =
+            NameVisitor nameVisitor
+    in
     rule
         |> Rule.withDeclarationListVisitor (declarationListVisitor visitor)
         |> Rule.withExpressionVisitor (expressionVisitor visitor)
 
 
-{-| A declaration list visitor that will run your call visitor.
+{-| This will apply the `valueVisitor` to every value in the module, and ignore any types.
 
     rule : Rule
     rule =
         Rule.newModuleRuleSchema "NoInconsistentAliases" initialContext
-            |> Rule.withDeclarationListVisitor (declarationListVisitor nameVisitor)
+            |> NameVisitor.withValueVisitor valueVisitor
             |> Rule.fromModuleRuleSchema
 
+    valueVisitor : Node ( ModuleName, String ) -> context -> ( List (Error {}), context )
+    valueVisitor node context =
+        -- Do what you want with the value
+        ( [], context )
+
 -}
-declarationListVisitor :
+withValueVisitor :
     (Node ( ModuleName, String ) -> context -> ( List (Error {}), context ))
+    -> Rule.ModuleRuleSchema { schemaState | canCollectProjectData : () } context
+    -> Rule.ModuleRuleSchema { schemaState | canCollectProjectData : (), hasAtLeastOneVisitor : () } context
+withValueVisitor valueVisitor rule =
+    let
+        visitor =
+            ValueVisitor valueVisitor
+    in
+    rule
+        |> Rule.withDeclarationListVisitor (declarationListVisitor visitor)
+        |> Rule.withExpressionVisitor (expressionVisitor visitor)
+
+
+{-| This will apply the `typeVisitor` to every type in the module, and ignore any values.
+
+    rule : Rule
+    rule =
+        Rule.newModuleRuleSchema "NoInconsistentAliases" initialContext
+            |> NameVisitor.withTypeVisitor typeVisitor
+            |> Rule.fromModuleRuleSchema
+
+    typeVisitor : Node ( ModuleName, String ) -> context -> ( List (Error {}), context )
+    typeVisitor node context =
+        -- Do what you want with the type
+        ( [], context )
+
+-}
+withTypeVisitor :
+    (Node ( ModuleName, String ) -> context -> ( List (Error {}), context ))
+    -> Rule.ModuleRuleSchema { schemaState | canCollectProjectData : () } context
+    -> Rule.ModuleRuleSchema { schemaState | canCollectProjectData : (), hasAtLeastOneVisitor : () } context
+withTypeVisitor typeVisitor rule =
+    let
+        visitor =
+            TypeVisitor typeVisitor
+    in
+    rule
+        |> Rule.withDeclarationListVisitor (declarationListVisitor visitor)
+        |> Rule.withExpressionVisitor (expressionVisitor visitor)
+
+
+{-| This will apply the `valueVisitor` to every value and the `typeVisitor` to every type in the module.
+
+    rule : Rule
+    rule =
+        Rule.newModuleRuleSchema "NoInconsistentAliases" initialContext
+            |> NameVisitor.withValueAndTypeVisitors
+                { valueVisitor = valueVisitor
+                , typeVisitor = typeVisitor
+                }
+            |> Rule.fromModuleRuleSchema
+
+    valueVisitor : Node ( ModuleName, String ) -> context -> ( List (Error {}), context )
+    valueVisitor node context =
+        -- Do what you want with the value
+        ( [], context )
+
+    typeVisitor : Node ( ModuleName, String ) -> context -> ( List (Error {}), context )
+    typeVisitor node context =
+        -- Do what you want with the type
+        ( [], context )
+
+-}
+withValueAndTypeVisitors :
+    { valueVisitor : Node ( ModuleName, String ) -> context -> ( List (Error {}), context )
+    , typeVisitor : Node ( ModuleName, String ) -> context -> ( List (Error {}), context )
+    }
+    -> Rule.ModuleRuleSchema { schemaState | canCollectProjectData : () } context
+    -> Rule.ModuleRuleSchema { schemaState | canCollectProjectData : (), hasAtLeastOneVisitor : () } context
+withValueAndTypeVisitors { valueVisitor, typeVisitor } rule =
+    let
+        visitor =
+            ValueAndTypeVisitor valueVisitor typeVisitor
+    in
+    rule
+        |> Rule.withDeclarationListVisitor (declarationListVisitor visitor)
+        |> Rule.withExpressionVisitor (expressionVisitor visitor)
+
+
+
+--- VISITORS
+
+
+declarationListVisitor :
+    Visitor context
     -> (List (Node Declaration) -> context -> ( List (Error {}), context ))
 declarationListVisitor visitor list context =
     visitDeclarationList list
         |> folder visitor context
 
 
-{-| An expression visitor that will run your call visitor.
-
-    rule : Rule
-    rule =
-        Rule.newModuleRuleSchema "NoInconsistentAliases" initialContext
-            |> Rule.withExpressionVisitor (expressionVisitor nameVisitor)
-            |> Rule.fromModuleRuleSchema
-
--}
 expressionVisitor :
-    (Node ( ModuleName, String ) -> context -> ( List (Error {}), context ))
+    Visitor context
     -> (Node Expression -> Rule.Direction -> context -> ( List (Error {}), context ))
 expressionVisitor visitor node direction context =
     case direction of
@@ -92,7 +193,7 @@ expressionVisitor visitor node direction context =
                 |> folder visitor context
 
         Rule.OnExit ->
-            [] |> folder visitor context
+            ( [], context )
 
 
 
@@ -100,8 +201,8 @@ expressionVisitor visitor node direction context =
 
 
 folder :
-    (Node ( ModuleName, String ) -> context -> ( List (Error {}), context ))
-    -> (context -> List (Node ( ModuleName, String )) -> ( List (Error {}), context ))
+    Visitor context
+    -> (context -> List Name -> ( List (Error {}), context ))
 folder visitor context list =
     case list of
         [] ->
@@ -110,7 +211,7 @@ folder visitor context list =
         head :: rest ->
             let
                 ( headErrors, headContext ) =
-                    visitor head context
+                    applyVisitor visitor head context
 
                 ( restErrors, restContext ) =
                     folder visitor headContext rest
@@ -118,16 +219,63 @@ folder visitor context list =
             ( headErrors ++ restErrors, restContext )
 
 
+applyVisitor : Visitor context -> Name -> context -> ( List (Error {}), context )
+applyVisitor visitor name context =
+    case name of
+        Value node ->
+            applyValueVisitor visitor node context
+
+        Type node ->
+            applyTypeVisitor visitor node context
+
+
+applyValueVisitor : Visitor context -> VisitorFunction context
+applyValueVisitor visitor =
+    case visitor of
+        NameVisitor function ->
+            function
+
+        ValueVisitor function ->
+            function
+
+        TypeVisitor _ ->
+            noopVisitor
+
+        ValueAndTypeVisitor function _ ->
+            function
+
+
+applyTypeVisitor : Visitor context -> VisitorFunction context
+applyTypeVisitor visitor =
+    case visitor of
+        NameVisitor function ->
+            function
+
+        ValueVisitor _ ->
+            noopVisitor
+
+        TypeVisitor function ->
+            function
+
+        ValueAndTypeVisitor _ function ->
+            function
+
+
+noopVisitor : VisitorFunction context
+noopVisitor _ context =
+    ( [], context )
+
+
 
 --- PRIVATE
 
 
-visitDeclarationList : List (Node Declaration) -> List (Node ( ModuleName, String ))
+visitDeclarationList : List (Node Declaration) -> List Name
 visitDeclarationList nodes =
     List.concatMap visitDeclaration nodes
 
 
-visitDeclaration : Node Declaration -> List (Node ( ModuleName, String ))
+visitDeclaration : Node Declaration -> List Name
 visitDeclaration node =
     case Node.value node of
         Declaration.FunctionDeclaration { signature, declaration } ->
@@ -147,7 +295,7 @@ visitDeclaration node =
             []
 
 
-visitMaybeSignature : Maybe (Node Signature) -> List (Node ( ModuleName, String ))
+visitMaybeSignature : Maybe (Node Signature) -> List Name
 visitMaybeSignature maybeNode =
     case maybeNode of
         Just node ->
@@ -157,39 +305,39 @@ visitMaybeSignature maybeNode =
             []
 
 
-visitSignature : Node Signature -> List (Node ( ModuleName, String ))
+visitSignature : Node Signature -> List Name
 visitSignature node =
     visitTypeAnnotation (node |> Node.value |> .typeAnnotation)
 
 
-visitFunctionImplementation : Node Expression.FunctionImplementation -> List (Node ( ModuleName, String ))
+visitFunctionImplementation : Node Expression.FunctionImplementation -> List Name
 visitFunctionImplementation node =
     visitPatternList (node |> Node.value |> .arguments)
 
 
-visitValueConstructorList : List (Node Type.ValueConstructor) -> List (Node ( ModuleName, String ))
+visitValueConstructorList : List (Node Type.ValueConstructor) -> List Name
 visitValueConstructorList list =
     List.concatMap visitValueConstructor list
 
 
-visitValueConstructor : Node Type.ValueConstructor -> List (Node ( ModuleName, String ))
+visitValueConstructor : Node Type.ValueConstructor -> List Name
 visitValueConstructor node =
     visitTypeAnnotationList (node |> Node.value |> .arguments)
 
 
-visitTypeAnnotationList : List (Node TypeAnnotation) -> List (Node ( ModuleName, String ))
+visitTypeAnnotationList : List (Node TypeAnnotation) -> List Name
 visitTypeAnnotationList list =
     List.concatMap visitTypeAnnotation list
 
 
-visitTypeAnnotation : Node TypeAnnotation -> List (Node ( ModuleName, String ))
+visitTypeAnnotation : Node TypeAnnotation -> List Name
 visitTypeAnnotation node =
     case Node.value node of
         TypeAnnotation.GenericType _ ->
             []
 
         TypeAnnotation.Typed call types ->
-            visitCall call
+            visitType call
                 ++ visitTypeAnnotationList types
 
         TypeAnnotation.Unit ->
@@ -209,21 +357,21 @@ visitTypeAnnotation node =
                 ++ visitTypeAnnotation return
 
 
-visitRecordFieldList : List (Node TypeAnnotation.RecordField) -> List (Node ( ModuleName, String ))
+visitRecordFieldList : List (Node TypeAnnotation.RecordField) -> List Name
 visitRecordFieldList list =
     List.concatMap visitRecordField list
 
 
-visitRecordField : Node TypeAnnotation.RecordField -> List (Node ( ModuleName, String ))
+visitRecordField : Node TypeAnnotation.RecordField -> List Name
 visitRecordField node =
     visitTypeAnnotation (node |> Node.value |> Tuple.second)
 
 
-visitExpression : Node Expression -> List (Node ( ModuleName, String ))
+visitExpression : Node Expression -> List Name
 visitExpression node =
     case Node.value node of
         Expression.FunctionOrValue moduleName function ->
-            [ newCall moduleName function (Node.range node) ]
+            visitValue (Node (Node.range node) ( moduleName, function ))
 
         Expression.LetExpression { declarations } ->
             visitLetDeclarationList declarations
@@ -238,12 +386,12 @@ visitExpression node =
             []
 
 
-visitLetDeclarationList : List (Node Expression.LetDeclaration) -> List (Node ( ModuleName, String ))
+visitLetDeclarationList : List (Node Expression.LetDeclaration) -> List Name
 visitLetDeclarationList list =
     List.concatMap visitLetDeclaration list
 
 
-visitLetDeclaration : Node Expression.LetDeclaration -> List (Node ( ModuleName, String ))
+visitLetDeclaration : Node Expression.LetDeclaration -> List Name
 visitLetDeclaration node =
     case Node.value node of
         Expression.LetFunction { signature, declaration } ->
@@ -254,22 +402,22 @@ visitLetDeclaration node =
             visitPattern pattern
 
 
-visitCaseList : List Expression.Case -> List (Node ( ModuleName, String ))
+visitCaseList : List Expression.Case -> List Name
 visitCaseList list =
     List.concatMap visitCase list
 
 
-visitCase : Expression.Case -> List (Node ( ModuleName, String ))
+visitCase : Expression.Case -> List Name
 visitCase ( pattern, _ ) =
     visitPattern pattern
 
 
-visitPatternList : List (Node Pattern) -> List (Node ( ModuleName, String ))
+visitPatternList : List (Node Pattern) -> List Name
 visitPatternList list =
     List.concatMap visitPattern list
 
 
-visitPattern : Node Pattern -> List (Node ( ModuleName, String ))
+visitPattern : Node Pattern -> List Name
 visitPattern node =
     case Node.value node of
         Pattern.TuplePattern patterns ->
@@ -292,7 +440,7 @@ visitPattern node =
                 range =
                     { start = start, end = newEnd }
             in
-            [ newCall moduleName name range ]
+            visitValue (Node range ( moduleName, name ))
 
         Pattern.AsPattern pattern _ ->
             visitPattern pattern
@@ -304,11 +452,11 @@ visitPattern node =
             []
 
 
-visitCall : Node ( ModuleName, String ) -> List (Node ( ModuleName, String ))
-visitCall node =
-    [ node ]
+visitValue : Node ( ModuleName, String ) -> List Name
+visitValue node =
+    [ Value node ]
 
 
-newCall : ModuleName -> String -> Range -> Node ( ModuleName, String )
-newCall moduleName name range =
-    Node range ( moduleName, name )
+visitType : Node ( ModuleName, String ) -> List Name
+visitType node =
+    [ Type node ]
