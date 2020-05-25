@@ -162,6 +162,18 @@ view nodes =
                     , expectedValueError context "name"
                         |> Review.Test.atExactly { start = { row = 4, column = 54 }, end = { row = 4, column = 58 } }
                     ]
+    , fuzz Fuzz.string "RecordAccess" <|
+        \context ->
+            """
+module Page exposing (view)
+value model =
+    model.value
+"""
+                |> Review.Test.run (valueOrTypeVisitorRule context)
+                |> Review.Test.expectErrors
+                    [ expectedValueError context "model"
+                        |> Review.Test.atExactly { start = { row = 4, column = 5 }, end = { row = 4, column = 10 } }
+                    ]
     , fuzz Fuzz.string "RecordUpdateExpression" <|
         \context ->
             """
