@@ -1,6 +1,6 @@
 # review-name-visitor
 
-Current version: `0.1.1`.
+Current version: `0.2.0`.
 
 ![elm-review 2.0](https://img.shields.io/badge/elm--review-2.0-%231293D8)
 ![elm 0.19](https://img.shields.io/badge/elm-0.19-%231293D8)
