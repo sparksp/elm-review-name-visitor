@@ -18,6 +18,7 @@ all =
         , describe "Patterns" patternTests
         , describe "Type Annotations" typeAnnotationTests
         , describe "Visitors" visitorTests
+        , describe "Project Rules" projectRuleTests
         ]
 
 
@@ -450,6 +451,37 @@ view page =
                     , expectedNameError "3" "Page.body"
                     , expectedNameError "4" "page"
                         |> Review.Test.atExactly { start = { row = 5, column = 28 }, end = { row = 5, column = 32 } }
+                    ]
+    ]
+
+
+projectRuleTests : List Test
+projectRuleTests =
+    [ test "works in a project rule schema" <|
+        \() ->
+            let
+                rule : Rule
+                rule =
+                    Rule.newProjectRuleSchema "TestProjectRule" ()
+                        |> Rule.withModuleVisitor
+                            (\schema ->
+                                schema
+                                    |> NameVisitor.withNameVisitor nameVisitor
+                            )
+                        |> Rule.withModuleContext
+                            { foldProjectContexts = \() () -> ()
+                            , fromProjectToModule = \_ _ () -> "context"
+                            , fromModuleToProject = \_ _ _ -> ()
+                            }
+                        |> Rule.fromProjectRuleSchema
+            in
+            """
+module A exposing (..)
+foo = bar
+"""
+                |> Review.Test.run rule
+                |> Review.Test.expectErrors
+                    [ expectedNameError "context" "bar"
                     ]
     ]
 
