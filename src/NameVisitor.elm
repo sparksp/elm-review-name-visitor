@@ -20,6 +20,11 @@ This makes no attempt to resolve module names from imports, it just returns what
 
 [elm-review-scope]: http://github.com/jfmengels/elm-review-scope/
 
+
+## Version
+
+Version: 0.1.1
+
 -}
 
 import Elm.Syntax.Declaration as Declaration exposing (Declaration)

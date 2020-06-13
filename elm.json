@@ -2,8 +2,8 @@
     "type": "package",
     "name": "sparksp/elm-review-name-visitor",
     "summary": "Visit each name (value or type) in a module",
-    "version": "0.1.0",
     "license": "MIT",
+    "version": "0.1.1",
     "exposed-modules": [
         "NameVisitor"
     ],

@@ -1,12 +1,12 @@
 # review-name-visitor
 
+Current version: `0.1.1`.
+
 ![elm-review 2.0](https://img.shields.io/badge/elm--review-2.0-%231293D8)
 ![elm 0.19](https://img.shields.io/badge/elm-0.19-%231293D8)
 ![Tests](https://github.com/sparksp/elm-review-name-visitor/workflows/Tests/badge.svg)
 
-Visit each name in the module.
-
-A "name" is a `Node ( ModuleName, String )` and represents a value or type reference. Here are some examples:
+Visit each name in the module. A "name" is a `Node ( ModuleName, String )` and represents a value or type reference. Here are some examples:
 
   - `Json.Encode.Value` -> `( [ "Json", "Encode" ], "Value" )`
   - `Html.Attributes.class` -> `( [ "Html", "Attributes" ], "class" )`
