@@ -23,7 +23,7 @@ This makes no attempt to resolve module names from imports, it just returns what
 
 ## Version
 
-Version: 0.1.1
+Version: 0.2.0
 
 -}
 
