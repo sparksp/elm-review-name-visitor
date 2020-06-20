@@ -100,10 +100,9 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Add yarn bin to path
         run: echo ::add-path::$(yarn bin)
-      - name: Build elm docs
-        run: elm make --docs docs.json
-      - name: Check for any changed files
+      - name: Check docs.json is up to date
         run: |
-          git update-index --refresh 
-          git diff-index --quiet HEAD --
+          elm make --docs docs.json
+          git add docs.json
+          git diff-index --cached --quiet HEAD --
 
