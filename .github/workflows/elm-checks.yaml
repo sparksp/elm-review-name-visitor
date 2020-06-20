@@ -50,8 +50,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        with:
-            ref: ${{ github.head_ref }}
       - name: Get yarn cache directory
         id: yarn-cache-dir
         run: echo "::set-output name=path::$(yarn cache dir)"
@@ -82,7 +80,7 @@ jobs:
         continue-on-error: true
       - name: Checkout new fixes branch
         if: ${{ github.event_name == 'pull_request' }}
-        run: git checkout -b fixes/${{ github.head_ref }}
+        run: git switch -c fixes/${{ github.head_ref }}
       - uses: stefanzweifel/git-auto-commit-action@v4
         if: ${{ github.event_name == 'pull_request' }}
         id: docs-commit
@@ -111,8 +109,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.head_ref }}
       - name: Get yarn cache directory
         id: yarn-cache-dir
         run: echo "::set-output name=path::$(yarn cache dir)"
@@ -136,7 +132,7 @@ jobs:
         run: elm make --docs docs.json
       - name: Checkout new docs branch
         if: ${{ github.event_name == 'pull_request' }}
-        run: git checkout -b docs/${{ github.head_ref }}
+        run: git switch -c docs/${{ github.head_ref }}
       - uses: stefanzweifel/git-auto-commit-action@v4
         if: ${{ github.event_name == 'pull_request' }}
         id: docs-commit
