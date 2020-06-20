@@ -79,7 +79,7 @@ withNameVisitor nameVisitor rule =
     in
     rule
         |> Rule.withDeclarationListVisitor (declarationListVisitor visitor)
-        |> Rule.withExpressionVisitor (expressionVisitor visitor)
+        |> Rule.withExpressionEnterVisitor (expressionVisitor visitor)
 
 
 {-| This will apply the `valueVisitor` to every value in the module, and ignore any types.
@@ -107,7 +107,7 @@ withValueVisitor valueVisitor rule =
     in
     rule
         |> Rule.withDeclarationListVisitor (declarationListVisitor visitor)
-        |> Rule.withExpressionVisitor (expressionVisitor visitor)
+        |> Rule.withExpressionEnterVisitor (expressionVisitor visitor)
 
 
 {-| This will apply the `typeVisitor` to every type in the module, and ignore any values.
@@ -135,7 +135,7 @@ withTypeVisitor typeVisitor rule =
     in
     rule
         |> Rule.withDeclarationListVisitor (declarationListVisitor visitor)
-        |> Rule.withExpressionVisitor (expressionVisitor visitor)
+        |> Rule.withExpressionEnterVisitor (expressionVisitor visitor)
 
 
 {-| This will apply the `valueVisitor` to every value and the `typeVisitor` to every type in the module.
@@ -173,7 +173,7 @@ withValueAndTypeVisitors { valueVisitor, typeVisitor } rule =
     in
     rule
         |> Rule.withDeclarationListVisitor (declarationListVisitor visitor)
-        |> Rule.withExpressionVisitor (expressionVisitor visitor)
+        |> Rule.withExpressionEnterVisitor (expressionVisitor visitor)
 
 
 
@@ -188,17 +188,10 @@ declarationListVisitor visitor list context =
         |> folder visitor context
 
 
-expressionVisitor :
-    Visitor context
-    -> (Node Expression -> Rule.Direction -> context -> ( List (Error {}), context ))
-expressionVisitor visitor node direction context =
-    case direction of
-        Rule.OnEnter ->
-            visitExpression node
-                |> folder visitor context
-
-        Rule.OnExit ->
-            ( [], context )
+expressionVisitor : Visitor context -> (Node Expression -> context -> ( List (Error {}), context ))
+expressionVisitor visitor node context =
+    visitExpression node
+        |> folder visitor context
 
 
 
