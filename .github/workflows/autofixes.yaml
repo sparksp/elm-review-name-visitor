@@ -9,6 +9,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
       - name: Get yarn cache directory
         id: yarn-cache-dir
         run: echo "::set-output name=path::$(yarn cache dir)"
@@ -37,7 +40,7 @@ jobs:
       - uses: peter-evans/create-pull-request@v2
         with:
           commit-message: 'Apply elm-review fixes'
-          branch: fixes/${{ github.ref }}
+          branch: fixes/${{ branch }}
           title: "Apply elm-review fixes"
           body: "*This is an automated pull request because elm-review found problems that could be fixed automatically.*"
           reviewers: sparksp
@@ -48,6 +51,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
       - name: Get yarn cache directory
         id: yarn-cache-dir
         run: echo "::set-output name=path::$(yarn cache dir)"
@@ -72,7 +78,7 @@ jobs:
       - uses: peter-evans/create-pull-request@v2
         with:
           commit-message: 'Update docs.json'
-          branch: docs/${{ github.ref }}
+          branch: docs/${{ branch }}
           title: "Update docs.json"
           body: "*This is an automated pull request because we found that the docs were out of date.*"
           reviewers: sparksp
