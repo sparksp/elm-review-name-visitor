@@ -3,7 +3,7 @@
     "name": "sparksp/elm-review-name-visitor",
     "summary": "Visit each name (value or type) in a module",
     "license": "MIT",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "exposed-modules": [
         "NameVisitor"
     ],
