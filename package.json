@@ -1,6 +1,6 @@
 {
   "name": "elm-review-call-visitor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Visit each call in a module.",
   "repository": "https://github.com/sparksp/elm-review-call-visitor",
   "author": "Phill Sparks <me@phills.me.uk>",
