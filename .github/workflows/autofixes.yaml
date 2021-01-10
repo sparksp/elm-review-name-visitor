@@ -38,7 +38,7 @@ jobs:
         id: elm-review
         run: yes | elm-review --fix-all
         continue-on-error: true
-      - uses: peter-evans/create-pull-request@v2
+      - uses: peter-evans/create-pull-request@v3
         with:
           commit-message: 'Apply elm-review fixes'
           branch: fixes/${{ steps.extract_branch.outputs.branch }}
@@ -77,7 +77,7 @@ jobs:
         run: yarn bin >> $GITHUB_PATH
       - name: Build elm docs
         run: elm make --docs docs.json
-      - uses: peter-evans/create-pull-request@v2
+      - uses: peter-evans/create-pull-request@v3
         with:
           commit-message: 'Update docs.json'
           branch: docs/${{ steps.extract_branch.outputs.branch }}
