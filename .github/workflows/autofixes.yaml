@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Add yarn bin to path
-        run: echo ::add-path::$(yarn bin)
+        run: yarn bin >> $GITHUB_PATH
       - name: Run elm-format
         run: elm-format --yes
       - name: Apply elm-review fixes
@@ -74,7 +74,7 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Add yarn bin to path
-        run: echo ::add-path::$(yarn bin)
+        run: yarn bin >> $GITHUB_PATH
       - name: Build elm docs
         run: elm make --docs docs.json
       - uses: peter-evans/create-pull-request@v2
