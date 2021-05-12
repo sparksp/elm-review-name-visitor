@@ -9,26 +9,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v2.3.4
+
+      - uses: actions/cache@v2.1.5
         id: yarn-cache
         with:
           path: node_modules
           key: ${{ runner.os }}-node_modules-${{ hashFiles('yarn.lock') }}
-      - uses: actions/cache@v2
-        id: elm-cache
+          restore-keys: ${{ runner.os }}-node_modules
+
+      - uses: actions/cache@v2.1.5
         with:
           path: ~/.elm
           key: ${{ runner.os }}-elm--home-${{ hashFiles('**/elm.json', 'elm-tooling.json') }}
+
       - name: Install dependencies
         if: steps.yarn-cache.outputs.cache-hit != 'true'
         env:
           NO_ELM_TOOLING_INSTALL: 1
         run: yarn install --frozen-lockfile
-      - name: elm-tooling install
+
+      - name: Install elm tooling
         run: npx --no-install elm-tooling install
+
       - name: Build elm
         run: npx --no-install elm make --output /dev/null
+
       - name: Run elm-test
         run: npx --no-install elm-test
 
@@ -36,55 +42,62 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v2.3.4
+
+      - uses: actions/cache@v2.1.5
         id: yarn-cache
         with:
           path: node_modules
           key: ${{ runner.os }}-node_modules-${{ hashFiles('yarn.lock') }}
-      - uses: actions/cache@v2
-        id: elm-cache
+          restore-keys: ${{ runner.os }}-node_modules
+
+      - uses: actions/cache@v2.1.5
         with:
           path: ~/.elm
           key: ${{ runner.os }}-elm--home-${{ hashFiles('**/elm.json', 'elm-tooling.json') }}
+
       - name: Install dependencies
         if: steps.yarn-cache.outputs.cache-hit != 'true'
         env:
           NO_ELM_TOOLING_INSTALL: 1
         run: yarn install --frozen-lockfile
-      - name: elm-tooling install
+
+      - name: Install elm tooling
         run: npx --no-install elm-tooling install
-      - name: Add yarn bin to path
-        run: yarn bin >> $GITHUB_PATH
+
       - name: Run elm-review
-        uses: sparksp/elm-review-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx --no-install elm-review
+
       - name: Run elm-format
-        uses: sparksp/elm-format-action@v1
+        run: npx --no-install elm-format --validate
 
   docs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v2.3.4
+
+      - uses: actions/cache@v2.1.5
         id: yarn-cache
         with:
           path: node_modules
           key: ${{ runner.os }}-node_modules-${{ hashFiles('yarn.lock') }}
-      - uses: actions/cache@v2
-        id: elm-cache
+          restore-keys: ${{ runner.os }}-node_modules
+
+      - uses: actions/cache@v2.1.5
         with:
           path: ~/.elm
           key: ${{ runner.os }}-elm--home-${{ hashFiles('**/elm.json', 'elm-tooling.json') }}
+
       - name: Install dependencies
         if: steps.yarn-cache.outputs.cache-hit != 'true'
         env:
           NO_ELM_TOOLING_INSTALL: 1
         run: yarn install --frozen-lockfile
-      - name: elm-tooling install
+
+      - name: Install elm tooling
         run: npx --no-install elm-tooling install
+
       - name: Check docs.json is up to date
         run: |
           npx --no-install elm make --docs docs.json
