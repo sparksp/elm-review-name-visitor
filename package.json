@@ -9,7 +9,7 @@
     "postinstall": "elm-tooling install",
     "all": "run-s docs lint:* test ;",
     "docs": "elm make --docs docs.json",
-    "lint:format": "elm-format --validate src tests",
+    "lint:format": "elm-format --yes src tests review/src",
     "lint:review": "elm-review",
     "lint": "run-s lint:format lint:review ;",
     "test": "elm-test",
