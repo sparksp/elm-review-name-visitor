@@ -365,10 +365,10 @@ define-properties@^1.1.3, define-properties@^1.2.0, define-properties@^1.2.1:
     has-property-descriptors "^1.0.0"
     object-keys "^1.1.1"
 
-elm-review@^2.13.2:
-  version "2.13.2"
-  resolved "https://registry.yarnpkg.com/elm-review/-/elm-review-2.13.2.tgz#e303bb976f6a6de70f1a3bd1f392f21eb9f34e49"
-  integrity sha512-kI34BQ/EN1NC4KUcdZWAGNbaxWmR80kqJQRjT1ZmC0AyZRiJqdylhANucyzhPKEz60VGAkqau5axpySWXbdPLg==
+elm-review@^2.13.3:
+  version "2.13.3"
+  resolved "https://registry.yarnpkg.com/elm-review/-/elm-review-2.13.3.tgz#396a8a230a26fabd6d5cb3a41a77870249bc9c69"
+  integrity sha512-iEUihHeqTv0Xr5CVcUf1hDPxypXNtFPVunyEpn2LKAaa/FtEfTHKOVeBYfFNnt+bIDHbGA+hkWPv1qfzxEDH8Q==
   dependencies:
     chalk "^4.0.0"
     chokidar "^3.5.2"
